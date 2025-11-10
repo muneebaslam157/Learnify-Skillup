@@ -8,7 +8,7 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t learnify-skillup .'
+                sh 'docker build -t learnify-skillup Learnify-Skillup/Learnify-Skillup/'
             }
         }
         stage('Run Container') {
