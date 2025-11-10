@@ -6,11 +6,12 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/muneebaslam157/Learnify-Skillup.git'
             }
         }
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t learnify-skillup Learnify-Skillup/Learnify-Skillup/'
-            }
-        }
+	stage('Build Docker Image') {
+	    steps {
+        	sh 'docker build -t learnify-skillup .'
+    	    }
+	}
+
         stage('Run Container') {
             steps {
                 sh 'docker run -d -p 8080:8080 learnify-skillup'
