@@ -11,12 +11,16 @@ pipeline {
         	sh 'docker build -t learnify-skillup .'
     	    }
 	}
+	stage('Run Container') {
+	    steps {
+        	sh '''
+        		docker stop learnify-skillup || true
+        		docker rm learnify-skillup || true
+        		docker run -d -p 8080:8080 --name learnify-skillup learnify-skillup
+        		'''
+    		}
+	}
 
-        stage('Run Container') {
-            steps {
-                sh 'docker run -d -p 8080:8080 learnify-skillup'
-            }
-        }
         stage('Post Build') {
             steps {
                 echo 'Build complete!'
