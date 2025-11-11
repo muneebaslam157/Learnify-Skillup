@@ -12,14 +12,14 @@ pipeline {
     	    }
 	}
 	stage('Run Container') {
-	    steps {
-        	sh '''
-        		docker stop learnify-skillup || true
-        		docker rm learnify-skillup || true
-        		docker run -d -p 8080:8080 --name learnify-skillup learnify-skillup
-        		'''
-    		}
-	}
+    steps {
+        sh '''
+        docker stop learnify-skillup || true
+        docker rm learnify-skillup || true
+        docker run -d -p 3000:3000 --name learnify-skillup learnify-skillup
+        '''
+    }
+}
 
         stage('Post Build') {
             steps {
