@@ -1,12 +1,4 @@
-# Simple Dockerfile for Node.js app
-FROM node:18-alpine
-
+FROM alpine:3.18
 WORKDIR /app
-
 COPY . .
-
-RUN npm install
-
-EXPOSE 8080
-
-CMD ["npm", "start"]
+CMD ["echo", "Jenkins CI/CD pipeline executed successfully!"]
