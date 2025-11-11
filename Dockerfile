@@ -1,4 +1,6 @@
-FROM alpine:3.18
+FROM node:18-alpine
 WORKDIR /app
 COPY . .
-CMD ["echo", "Jenkins CI/CD pipeline executed successfully!"]
+RUN npm install || true
+EXPOSE 8080
+CMD ["npm", "start"]
