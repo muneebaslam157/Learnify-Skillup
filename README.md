@@ -186,5 +186,3 @@ It was a challenging journey to make this project but I gave my full potential a
 
 # P.S
 #### Make sure to run the project, as I have added little bit coloring and some responsiveness for mobile devices which was not shown in video.
-
-
