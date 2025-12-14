@@ -2,41 +2,27 @@ pipeline {
   agent any
 
   environment {
-    // Public URL (used in email + for reference)
-    PUBLIC_APP_URL = "http://13.233.96.170:5173"
-
-    // Local URL Jenkins uses to test inside EC2
-    APP_URL = "http://localhost:5173"
-
-    // Repos
+    APP_PORT = "5173"
+    APP_URL  = "http://localhost:5173"
+    PUBLIC_URL = "http://13.233.96.170:5173"
     TESTS_REPO = "https://github.com/muneebaslam157/learnify-selenium-tests.git"
-
-    // Docker
-    IMAGE_NAME = "learnify-skillup-image"
-    CONTAINER_NAME = "learnify-skillup-app"
-
-    // Emails (keep existing two + add sir)
-    EMAIL_TO = "muneebaslam497@gmail.com, muneebaslam157@gmail.com"
-  }
-
-  options {
-    timestamps()
+    RECIPIENTS = "muneebaslam157@gmail.com"
   }
 
   stages {
 
-    stage('Checkout App Repo') {
+    stage('Checkout App Repo (this repo)') {
       steps {
-        echo "Checking out Learnify-Skillup (this repo)..."
+        echo "Checking out Learnify-Skillup (project repo)..."
         checkout scm
       }
     }
 
-    stage('Checkout Tests Repo') {
+    stage('Checkout Selenium Tests Repo') {
       steps {
-        echo "Cloning Selenium tests repo..."
+        echo "Cloning learnify-selenium-tests..."
         sh '''
-          rm -rf selenium-tests
+          rm -rf selenium-tests || true
           git clone ${TESTS_REPO} selenium-tests
         '''
       }
@@ -45,95 +31,108 @@ pipeline {
     stage('Build App Docker Image') {
       steps {
         echo "Building Docker image for Learnify app..."
-        sh """
-          docker build -t ${IMAGE_NAME}:latest .
-        """
+        sh '''
+          docker build -t learnify-skillup-image .
+        '''
       }
     }
 
     stage('Run App Container') {
       steps {
         echo "Starting app container..."
-        sh """
-          docker rm -f ${CONTAINER_NAME} || true
-          docker run -d --name ${CONTAINER_NAME} -p 5173:5173 ${IMAGE_NAME}:latest
+        sh '''
+          docker rm -f learnify-skillup-app || true
+          docker run -d --name learnify-skillup-app -p ${APP_PORT}:${APP_PORT} learnify-skillup-image
           echo "Waiting for app to start..."
-          sleep 12
-        """
+          sleep 20
+        '''
       }
     }
 
     stage('Run Selenium Tests') {
       steps {
-        echo "Running Selenium tests against ${APP_URL} ..."
+        echo "Running Selenium smoke tests..."
         sh '''
           cd selenium-tests
           python3 -m pip install --user -r requirements.txt
           export APP_URL=${APP_URL}
-          python3 -m unittest -v tests.test_learnify | tee test_output.txt
+          python3 -m unittest -v tests.test_learnify
         '''
       }
     }
   }
 
   post {
-    always {
-      echo "Cleaning up app container..."
-      sh """
-        docker rm -f ${CONTAINER_NAME} || true
-      """
-    }
-
     success {
-      script {
-        def output = sh(script: "cd selenium-tests && tail -n 120 test_output.txt || true", returnStdout: true).trim()
+      echo "All tests passed. Sending success email..."
+      emailext(
+        to: "${RECIPIENTS}",
+        subject: "Learnify CI SUCCESS - Build #${BUILD_NUMBER}",
+        mimeType: 'text/html',
+        body: """
+        <p>Hello Sir,</p>
 
-        emailext(
-          to: "${EMAIL_TO}",
-          subject: "Learnify CI SUCCESS - Build #${BUILD_NUMBER}",
-          mimeType: 'text/html',
-          body: """
-            <h3>Learnify CI/CD Pipeline - SUCCESS</h3>
-            <p><b>Job:</b> ${JOB_NAME}<br/>
-               <b>Build:</b> #${BUILD_NUMBER}<br/>
-               <b>App Link:</b> <a href="${PUBLIC_APP_URL}">${PUBLIC_APP_URL}</a>
-            </p>
+        <p>The Learnify CI pipeline ran successfully on Jenkins (EC2).</p>
 
-            <h4>Test Output (last lines)</h4>
-            <pre style="background:#f4f4f4;padding:10px;border:1px solid #ddd;">${output}</pre>
+        <p>
+        <b>Project Repository:</b> ${env.GIT_URL}<br/>
+        <b>Branch:</b> ${env.GIT_BRANCH}<br/>
+        <b>Build:</b> #${BUILD_NUMBER}<br/>
+        <b>Status:</b> SUCCESS
+        </p>
 
-            <p>In regards,<br/>
-            <b>Muneeb Aslam</b><br/>
-            FA22-BCS-077</p>
-          """
-        )
-      }
+        <p>
+        All 10 Selenium smoke tests passed against the Dockerized Learnify app.
+        </p>
+
+        <p>
+        <b>Application URL:</b> <a href="${PUBLIC_URL}">${PUBLIC_URL}</a><br/>
+        <b>Console Output:</b> <a href="${BUILD_URL}console">${BUILD_URL}console</a>
+        </p>
+
+        <p>
+        Regards,<br/>
+        <b>Muneeb Aslam</b><br/>
+        FA22-BCS-077
+        </p>
+        """
+      )
     }
 
     failure {
-      script {
-        def output = sh(script: "cd selenium-tests && tail -n 200 test_output.txt || true", returnStdout: true).trim()
+      echo "Some tests failed. Sending failure email..."
+      emailext(
+        to: "${RECIPIENTS}",
+        subject: "Learnify CI FAILED - Build #${BUILD_NUMBER}",
+        mimeType: 'text/html',
+        body: """
+        <p>Hello Sir,</p>
 
-        emailext(
-          to: "${EMAIL_TO}",
-          subject: "Learnify CI FAILED - Build #${BUILD_NUMBER}",
-          mimeType: 'text/html',
-          body: """
-            <h3>Learnify CI/CD Pipeline - FAILED</h3>
-            <p><b>Job:</b> ${JOB_NAME}<br/>
-               <b>Build:</b> #${BUILD_NUMBER}<br/>
-               <b>App Link:</b> <a href="${PUBLIC_APP_URL}">${PUBLIC_APP_URL}</a>
-            </p>
+        <p>The Learnify CI pipeline failed on Jenkins (EC2).</p>
 
-            <h4>Test Output (last lines)</h4>
-            <pre style="background:#f4f4f4;padding:10px;border:1px solid #ddd;">${output}</pre>
+        <p>
+        <b>Project Repository:</b> ${env.GIT_URL}<br/>
+        <b>Branch:</b> ${env.GIT_BRANCH}<br/>
+        <b>Build:</b> #${BUILD_NUMBER}<br/>
+        <b>Status:</b> FAILED
+        </p>
 
-            <p>In regards,<br/>
-            <b>Muneeb Aslam</b><br/>
-            FA22-BCS-077</p>
-          """
-        )
-      }
+        <p>
+        <b>Console Output:</b> <a href="${BUILD_URL}console">${BUILD_URL}console</a>
+        </p>
+
+        <p>
+        Regards,<br/>
+        <b>Muneeb Aslam</b><br/>
+        FA22-BCS-077
+        </p>
+        """
+      )
+    }
+
+    always {
+      echo "Cleaning up app container..."
+      sh 'docker rm -f learnify-skillup-app || true'
     }
   }
 }
